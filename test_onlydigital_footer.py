@@ -3,18 +3,22 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import unittest
 import time
+# Обратите внимание: импорт time здесь используется для небольшой паузы после скролла
 
 class OnlyDigitalFooterTest(unittest.TestCase):
     """
-    Автотест для проверки наличия футера, ссылки на Telegram и номера телефона.
+    Автотест для проверки наличия футера, ссылки на Telegram и номера телефона на only.digital.
     """
     
-    TEST_URL = "https://only.digital"
+    TEST_URL = "https://only.digital/"
     
     def setUp(self):
-        """Настройка: инициализация WebDriver с установкой большого разрешения."""
-        self.driver = webdriver.Chrome()
-        # Устанавливаем высокое разрешение, чтобы избежать проблем с адаптивным дизайном
+        """Настройка: инициализация WebDriver, установка разрешения и открытие страницы."""
+        # Использование Service для управления ChromeDriver (необходим импорт from selenium.webdriver.chrome.service import Service)
+        # Если вы не используете Service или webdriver-manager, убедитесь, что chromedriver находится в PATH
+        self.driver = webdriver.Chrome() 
+        
+        # Устанавливаем высокое разрешение
         self.driver.set_window_size(1920, 1080) 
         self.driver.implicitly_wait(10) 
         self.driver.get(self.TEST_URL)
@@ -39,20 +43,26 @@ class OnlyDigitalFooterTest(unittest.TestCase):
                 By.XPATH, 
                 "//footer//a[normalize-space()='@onlydigitalagency']"
             )
+            
+            # --- ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНЫЙ СКРОЛЛ К ЭЛЕМЕНТУ ---
+            # Это гарантирует, что элемент попадает в видимую область, что может решить проблему is_displayed()
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", telegram_link)
+            time.sleep(0.5) # Небольшая пауза, чтобы браузер успел отрисовать элемент
+            
             self.assertTrue(telegram_link.is_displayed(), 
-                            "❌ Ссылка на Telegram найдена, но не отображается в футере.")
+                            "❌ Ссылка на Telegram найдена, но не отображается в футере (после скролла).")
             
             href_attribute = telegram_link.get_attribute("href")
             self.assertIn("t.me", href_attribute, 
-                          f"❌ Ссылка на Telegram имеет неверный href: {href_attribute}")
+                            f"❌ Ссылка на Telegram имеет неверный href: {href_attribute}")
             
             print("✅ Ссылка на Telegram '@onlydigitalagency' найдена и корректна.")
         except NoSuchElementException:
             self.fail("❌ Тест провален: Ссылка на Telegram '@onlydigitalagency' не найдена в футере.")
 
-        # 3. Проверка элемента: Номер телефона
-        # Ищем любой элемент внутри футера, содержащий точную последовательность с пробелами
+        # 3. Проверка элемента: Номер телефона "062 21 85"
         try:
+            # Ищем любой элемент внутри футера, содержащий точную последовательность с пробелами
             phone_number_element = self.driver.find_element(
                 By.XPATH, 
                 "//footer//*[contains(text(), '062 21 85')]"
@@ -69,4 +79,6 @@ class OnlyDigitalFooterTest(unittest.TestCase):
         self.driver.quit()
 
 if __name__ == '__main__':
+    # Параметр buffer=True скрывает вывод stdout, кроме ошибок, что может быть полезно
+    # для чистого отчета, но здесь мы его оставили для отладки.
     unittest.main(buffer=True)
